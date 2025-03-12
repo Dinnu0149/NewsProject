@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    News | List
+{% endblock %}
+
+{% block content %}
+<div id="news-list" class="">
+    {% for item in news %}
+    <div class="news-item">
+        <h2>{{ item.title }}</h2>
+        <p>{{ item.text|truncatewords:30 }}</p>
+        <a href="{{item.get_absolute_url}}">Read more</a>
+    </div>
+    {% endfor %}
+</div>
+<div id="loading" class="d-flex justify-content-center align-content-center p-5 d-none">
+    <button class="btn btn-outline-success rounded-pill" type="button" disabled>
+        <i class="fa-solid fa-spinner fa-spin me-2"></i>
+        Loading...
+    </button>
+</div>
+
+<script>
+    let page = 1;
+    let isLoading = false;
+
+    function loadMoreNews() {
+        if (isLoading) return;
+        isLoading = true;
+        document.getElementById('loading').classList.remove('d-none');
+
+        page++;
+        fetch(`/news/?page=${page}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',  // Indicate AJAX request
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            const newsList = document.getElementById('news-list');
+            const newsData = JSON.parse(data.news);
+
+            // Append new news items to the list
+            newsData.forEach(item => {
+                const newsItem = document.createElement('div');
+                newsItem.className = 'news-item';
+                newsItem.innerHTML = `
+                    <h2>${item.fields.title}</h2>
+                    <p>${item.fields.text.substring(0, 100)}...</p>
+                    <a href="/news/${item.pk}/">Read more</a>
+                `;
+                newsList.appendChild(newsItem);
+            });
+
+            isLoading = false;
+            document.getElementById('loading').classList.add('d-none');
+
+            // Stop loading if there are no more pages
+            if (!data.has_next) {
+                window.onscroll = null;
+            }
+        });
+    }
+
+    // Trigger loadMoreNews when the user scrolls to the bottom
+    window.onscroll = function() {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+            loadMoreNews();
+        }
+    };
+</script>
+{% endblock %}

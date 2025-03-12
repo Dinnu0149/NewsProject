@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}
+    News | {{news.title}}
+{% endblock %}
+{% block content %}
+<h1>{{ news.title }}</h1>
+<img src="{{ news.display_image }}" alt="{{ news.title }}">
+<p>{{ news.text }}</p>
+<p>Views: {{ news.views }}</p>
+
+<!-- Like/Dislike Buttons -->
+<button id="like-btn" onclick="likeNews({{ news.id }}, 'like')">Like</button>
+<button id="dislike-btn" onclick="likeNews({{ news.id }}, 'dislike')">Dislike</button>
+
+<!-- Like/Dislike Count -->
+<span id="likes-count">{{ likes_count|default:news.total_likes }}</span> Likes
+<span id="dislikes-count">{{ dislikes_count|default:news.total_dislikes }}</span> Dislikes
+
+<script>
+    function likeNews(newsId, action) {
+        fetch(`/news/like/${newsId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',  // Add CSRF token for security
+            },
+            body: JSON.stringify({ action: action }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('likes-count').innerText = data.likes_count;
+            document.getElementById('dislikes-count').innerText = data.dislikes_count;
+
+            // Update button styles based on user's preference
+            if (data.user_liked) {
+                document.getElementById('like-btn').classList.add('active');
+                document.getElementById('dislike-btn').classList.remove('active');
+            } else {
+                document.getElementById('dislike-btn').classList.add('active');
+                document.getElementById('like-btn').classList.remove('active');
+            }
+        });
+    }
+</script>
+{% endblock %}

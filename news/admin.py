@@ -1,3 +1,12 @@
 from django.contrib import admin
+from .models import *
 
-# Register your models here.
+
+@admin.register(News)
+class ItemAdmin(admin.ModelAdmin):
+    list_display = ('id', )
+
+
+@admin.register(Tag)
+class ItemAdmin(admin.ModelAdmin):
+    list_display = ('id', )
