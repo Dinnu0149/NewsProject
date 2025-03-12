@@ -3,18 +3,80 @@
     News | {{news.title}}
 {% endblock %}
 {% block content %}
-<h1>{{ news.title }}</h1>
-<img src="{{ news.display_image }}" alt="{{ news.title }}">
-<p>{{ news.text }}</p>
-<p>Views: {{ news.views }}</p>
 
-<!-- Like/Dislike Buttons -->
-<button id="like-btn" onclick="likeNews({{ news.id }}, 'like')">Like</button>
-<button id="dislike-btn" onclick="likeNews({{ news.id }}, 'dislike')">Dislike</button>
+<div class="container mt-5 mb-3">
+    <div class="row">
+        <div class="col-md-8 ">
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card border-0 bg-transparent">
+                        <h5 class="card-title mb-3">{{news.title}}</h5>
+                        <img src="{{ news.display_image }}" class="card-img-top" alt="{{news.title}}">
+                        <small class="text-body-tertiary mt-1">{{ news.created_at|date:"F d, Y" }}</small>
+                        <div class="card-body">
+                            <p class="card-text">{{news.text}}</p>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <!-- Like Button -->
+                            <button class="btn btn-outline-danger btn-sm me-2" onclick="likeNews({{ news.id }}, 'like')">
+                                <i class="fa-solid fa-thumbs-up"></i> <span id="likes-count">{{ likes_count|default:news.total_likes }}</span>
+                            </button>
+                            <!-- Dislike Button -->
+                            <button class="btn btn-outline-danger btn-sm me-2" onclick="likeNews({{ news.id }}, 'dislike')">
+                                <i class="fa-solid fa-thumbs-down"></i> <span id="dislikes-count">{{ dislikes_count|default:news.total_dislikes }}</span>
+                            </button>
+                            <!-- Views -->
+                            <button class="btn-sm small border-0 bg-transparent text-success" disabled>
+                                <i class="fa-solid fa-eye"></i> <span class="views-count">{{ news.views }}</span>
+                            </button>
+                        </div>
+                        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-sm modal-dialog-centered">
+                                <div class="modal-content">
+                                <div class="modal-header">
+                                    <h6 class="modal-title" id="exampleModalLabel">{{ news.title|truncatewords:3 }}</h6>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to delete this news? This action can't be reversed</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <a href="{% url 'news:delete_news' news.pk %}" class="btn btn-danger">Delete News</a>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <!-- Like Button -->
+                            <button class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                <i class="fa-solid fa-trash-can"></i> <span id="likes-count">Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+         </div>
 
-<!-- Like/Dislike Count -->
-<span id="likes-count">{{ likes_count|default:news.total_likes }}</span> Likes
-<span id="dislikes-count">{{ dislikes_count|default:news.total_dislikes }}</span> Dislikes
+        <div class="col-md-4 ">
+           <div class="row">
+                <div class="col-md-8 ">
+                    <div class="card bg-transparent border-0">
+                        <h5 class="card-title mb-3">Get more news by tags</h5>
+                        <div class="row">
+                        {% for tag in tags %}
+                            <div class="col-12">
+                                <a href="{{tag.get_absolute_url}}" class="text-decoration-none">
+                                    <p class=" bg-danger-subtle text-danger rounded-pill text-capitalize text-center">{{tag.name}}</p>
+                                </a>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+         </div>
+    </div>
+</div>
 
 <script>
     function likeNews(newsId, action) {
@@ -30,15 +92,6 @@
         .then(data => {
             document.getElementById('likes-count').innerText = data.likes_count;
             document.getElementById('dislikes-count').innerText = data.dislikes_count;
-
-            // Update button styles based on user's preference
-            if (data.user_liked) {
-                document.getElementById('like-btn').classList.add('active');
-                document.getElementById('dislike-btn').classList.remove('active');
-            } else {
-                document.getElementById('dislike-btn').classList.add('active');
-                document.getElementById('like-btn').classList.remove('active');
-            }
         });
     }
 </script>

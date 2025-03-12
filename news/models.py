@@ -1,4 +1,6 @@
+from typing import Dict, Any
 from django.db import models
+from django.db.models import TextField, CharField, PositiveIntegerField
 from django.urls import reverse
 
 
@@ -7,6 +9,12 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_url(self) -> str:
+        """this is used to get the detail url for news"""
+
+        return reverse('news:news_by_tag',
+                       args=[self.pk])
 
 
 class News(models.Model):
@@ -28,6 +36,23 @@ class News(models.Model):
 
         return reverse('news:news_detail',
                        args=[self.pk])
+
+    def serialize_format(self) -> dict:
+        news_item = {
+            'pk': self.pk,
+            'fields': {
+                'url': self.get_absolute_url(),
+                'title': self.title,
+                'text': self.text,
+                'image': self.display_image(),
+                'tags': [tag.name for tag in self.tags.all()],  # Include tag titles
+                'total_likes': self.total_likes(),
+                'total_dislikes': self.total_dislikes(),
+                'views': self.views,
+                'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+        }
+        return news_item
 
     def increment_views(self) -> None:
         self.views += 1

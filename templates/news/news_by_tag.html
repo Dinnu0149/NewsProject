@@ -1,10 +1,159 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-</body>
-</html>
+{% block title %}
+    News | Tag | {{ tag.name }}
+{% endblock %}
+{% block meta %}
+    <meta name="description" content="News by tag: {{ tag.name }}">
+{% endblock %}
+{% block content %}
+
+<div id="news-list" class="container mt-3 bg-white p-4 position-relative ">
+    <div class="bg-dark mt-0 mb-3 pb-0 pt-0 rounded-pill" >
+        <h5 class="fw-bold text-light ms-4 mb-0"> {{ tag.name }} News</h5>
+        <p class="text-light ms-4 mt-0">Latest news from around the world of {{ tag.name }}</p>
+    </div>
+    {% for item in news %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <a href="{{ item.get_absolute_url }}" class="text-decoration-none">
+                <img src="{{ item.display_image }}" class="img-fluid" alt="{{ item.title }}">
+            </a>
+        </div>
+        <div class="col-md-8 align-content-center">
+            <a href="{{ item.get_absolute_url }}" class="text-decoration-none">
+                <h3 class="fw-bold text-dark">{{ item.title }}</h3>
+                <p class="text-danger small"> <small class="text-body-tertiary">Tags</small>
+                    {{ item.tags.all|join:', ' }}
+                </p>
+                <p class="text-muted">{{ item.text|truncatewords:30 }}</p>
+            </a>
+            <div class="d-flex align-items-center">
+                <!-- Like Button -->
+                <button class="btn btn-outline-danger btn-sm me-2" onclick="likePost({{ item.id }}, 'like', this)">
+                    <i class="fa-solid fa-thumbs-up"></i> <span class="like-count">{{ item.total_likes }}</span>
+                </button>
+                <!-- Dislike Button -->
+                <button class="btn btn-outline-danger btn-sm me-2" onclick="likePost({{ item.id }}, 'dislike', this)">
+                    <i class="fa-solid fa-thumbs-down"></i> <span class="dislike-count">{{ item.total_dislikes }}</span>
+                </button>
+                <!-- Views -->
+                <button class="btn-sm small border-0 bg-transparent text-success" disabled>
+                    <i class="fa-solid fa-eye"></i> <span class="views-count">{{ item.views }}</span>
+                </button>
+            </div>
+            <small class="text-body-tertiary">{{ item.created_at|date:"F d, Y" }}</small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="loading" class="d-flex justify-content-center align-content-center p-5 d-none">
+    <button class="btn btn-outline-success rounded-pill" type="button" disabled>
+        <i class="fa-solid fa-spinner fa-spin me-2"></i>
+        Loading...
+    </button>
+</div>
+
+<script>
+    let page = 1;
+    let isLoading = false;
+    let has_next_url = {{ has_next|lower }};
+    let tag_id = {{ tag.pk }};
+
+    function loadMoreNews() {
+        if (isLoading || !has_next_url) return;
+        isLoading = true;
+        document.getElementById('loading').classList.remove('d-none');
+
+        page++;
+        fetch(`/news/tag/${tag_id}/?page=${page}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',  // Indicate AJAX request
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            const newsList = document.getElementById('news-list');
+            const newsData = data.news;
+
+            // Append new news items to the list
+                    newsData.forEach(item => {
+            const newsItem = document.createElement('div');
+            newsItem.className = 'row mb-4';
+            newsItem.innerHTML = `
+                <div class="col-md-4">
+                    <a href="${item.fields.url}" class="text-decoration-none">
+                        <img src="${item.fields.image}" class="img-fluid" alt="${item.fields.title}">
+                    </a>
+                </div>
+                <div class="col-md-8 align-content-center">
+                    <a href="${item.fields.url}" class="text-decoration-none">
+                        <h3 class="fw-bold text-dark">${item.fields.title}</h3>
+                        <p class="text-danger small"><small class="text-body-tertiary">Tags</small> ${item.fields.tags.join(', ')}</p>
+                        <p class="text-muted">${item.fields.text.substring(0, 100)}...</p>
+                    </a>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-danger btn-sm me-2" onclick="likePost(${item.pk}, 'like', this)">
+                            <i class="fa-solid fa-thumbs-up"></i> <span class="like-count">${item.fields.total_likes}</span>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm me-2" onclick="likePost(${item.pk}, 'dislike', this)">
+                            <i class="fa-solid fa-thumbs-down"></i> <span class="dislike-count">${item.fields.total_dislikes}</span>
+                        </button>
+                        <button class="btn-sm small border-0 bg-transparent text-success" disabled>
+                            <i class="fa-solid fa-eye"></i> <span class="views-count">${item.fields.views}</span>
+                        </button>
+                    </div>
+                    <small class="text-body-tertiary">${new Date(item.fields.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</small>
+                </div>
+            `;
+            newsList.appendChild(newsItem);
+        });
+
+
+            isLoading = false;
+            document.getElementById('loading').classList.add('d-none');
+
+            // Stop loading if there are no more pages
+            if (!data.has_next) {
+                window.onscroll = null;
+            }
+        });
+    }
+
+    // Trigger loadMoreNews when the user scrolls to the bottom
+    window.onscroll = function() {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+            loadMoreNews();
+        }
+    };
+
+    // Like/Dislike Functionality
+    function likePost(newsId, action, button) {
+        fetch(`/news/like/${newsId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',  // Add CSRF token for security
+            },
+            body: JSON.stringify({ action: action }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const parentDiv = button.closest('.d-flex');  // Get the parent div containing both buttons
+            const likeCount = parentDiv.querySelector('.like-count');
+            const dislikeCount = parentDiv.querySelector('.dislike-count');
+
+            likeCount.textContent = data.likes_count;
+            dislikeCount.textContent = data.dislikes_count;
+
+            // Update button styles based on user's preference
+            if (action === 'like') {
+                parentDiv.querySelector('[onclick*="dislike"]').classList.remove('btn-danger');
+            } else if (action === 'dislike') {
+                parentDiv.querySelector('[onclick*="like"]').classList.remove('btn-danger');
+            }
+        });
+    }
+</script>
+{% endblock %}

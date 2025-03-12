@@ -15,7 +15,6 @@ DEBUG = int(os.environ.get("DEBUG"))
 
 ALLOWED_HOSTS = [os.environ.get("DJANGO_ALLOWED_HOSTS")]
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -99,7 +98,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
