@@ -1,18 +1,22 @@
 from django.urls import path
-from . import views
-from django.conf import settings
-from django.conf.urls.static import static
-
-app_name = 'news'
+from .views import (
+    NewsCreateAPIView,
+    NewsDeleteAPIView,
+    NewsListAPIView,
+    NewsByTagAPIView,
+    NewsDetailAPIView,
+    LikeNewsAPIView,
+    NewsStatisticsAPIView,
+    TagView,
+)
 
 urlpatterns = [
-                  path('', views.news_list, name='news_list'),
-                  path('<int:pk>/', views.news_detail, name='news_detail'),
-                  path('tag/<int:tag_id>/', views.news_by_tag, name='news_by_tag'),
-                  path('like/<int:news_id>/', views.like_news, name='like_news'),
-                  path('statistics/', views.news_statistics, name='news_statistics'),
-                  path('create/', views.create_news, name='create_news'),
-                  path('delete/<int:pk>/', views.delete_news, name='delete_news'),
-
-              ] + static(settings.STATIC_URL,
-                         document_root=settings.STATIC_ROOT)
+    path('create/', NewsCreateAPIView.as_view(), name='news_create'),
+    path('delete/<int:pk>/', NewsDeleteAPIView.as_view(), name='news_delete'),
+    path('list/', NewsListAPIView.as_view(), name='news_list'),
+    path('tag/<int:tag_id>/', NewsByTagAPIView.as_view(), name='news_by_tag'),
+    path('tags/', TagView.as_view(), name='tags'),
+    path('detail/<int:pk>/', NewsDetailAPIView.as_view(), name='news_detail'),
+    path('like/<int:news_id>/', LikeNewsAPIView.as_view(), name='like_news'),
+    path('statistics/', NewsStatisticsAPIView.as_view(), name='news_statistics'),
+]

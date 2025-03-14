@@ -1,150 +1,99 @@
-from django.shortcuts import render, redirect, HttpResponseRedirect, HttpResponse, get_object_or_404
-from django.core.paginator import Paginator
-from django.core import serializers
-from django.http import JsonResponse
-from django.contrib import messages
-from .models import *
-from .forms import NewsForm
-import json
+from rest_framework import generics, status, pagination, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .serializers import TagSerializer, NewsSerializer, LikeSerializer
+from .models import Tag, News, Like
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
-def create_news(request):
-    """Creating news content"""
-    form = NewsForm()
-    if request.method == 'POST':
-        form = NewsForm(request.POST, request.FILES)
+class NewsCreateAPIView(generics.CreateAPIView):
+    queryset = News.objects.all()
+    serializer_class = NewsSerializer
+    # permission_classes = [permissions.IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser]
 
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'News created successfully', extra_tags='alert-success')
-            return redirect('news:news_list')
-
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f'{field}: {error}', extra_tags='alert-danger')
-            return redirect('news:create_news')
-
-    context = {
-        'form': form
-    }
-    return render(request, 'news/create_news.html', context)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "News created successfully"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def delete_news(request, pk):
-    """Deleting news"""
-    back = request.META.get('HTTP_REFERER', '/')
-    try:
-        news = get_object_or_404(News, pk=pk)
-        news.delete()
+class NewsDeleteAPIView(generics.DestroyAPIView):
+    queryset = News.objects.all()
+    # permission_classes = [permissions.IsAdminUser]
+    lookup_field = 'pk'
 
-        messages.success(request, 'News deleted successfully', extra_tags='bg-success')
-        return redirect('news:news_list')
-
-    except News.DoesNotExist:
-        messages.success(request, 'Item does not exist', extra_tags='bg-danger')
-        return HttpResponseRedirect(back)
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "News deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
-
-def news_list(request):
-    """Initial load of news items, handle paginator to get 3 items
-     and new request for infinite scrolling"""
-    page = request.GET.get('page', 1)
-    news = News.objects.all()
-    paginator = Paginator(news, 3)
-    news_page = paginator.page(page)
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        news_data = [item.serialize_format() for item in news_page]
-
-        response = {
-            'news': news_data,
-            'has_next': news_page.has_next()
-        }
-        return JsonResponse(response, safe=False)
-
-    context = {
-        'news': news_page,
-        'has_next': news_page.has_next(),
-
-    }
-    return render(request, 'news/news_list.html', context)
+class NewsPagination(pagination.PageNumberPagination):
+    page_size = 3  # Number of items per page
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
-def news_by_tag(request, tag_id):
-    """Initial load of tag news items, handle paginator to get 3 items
-     and new request for infinite scrolling"""
-    page = request.GET.get('page', 1)
-    news = News.objects.filter(tags__pk=tag_id)
-    tag = get_object_or_404(Tag, pk=tag_id)
-
-    paginator = Paginator(news, 3)
-    news_page = paginator.page(page)
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        news_data = [item.serialize_format() for item in news_page]
-
-        response = {
-            'news': news_data,
-            'has_next': news_page.has_next()
-        }
-        return JsonResponse(response, safe=False)
-
-    context = {
-        'news': news_page,
-        'has_next': news_page.has_next(),
-        'tag': tag
-    }
-    return render(request, 'news/news_by_tag.html', context)
+class NewsListAPIView(generics.ListAPIView):
+    queryset = News.objects.all()
+    serializer_class = NewsSerializer
+    pagination_class = NewsPagination
 
 
-def news_detail(request, pk):
-    """Display news item and adding increment +1 to views"""
-    news = get_object_or_404(News, pk=pk)
-    tags = Tag.objects.all()
-    news.increment_views()
-
-    context = {
-        'news': news,
-        'tags': tags,
-    }
-    return render(request, 'news/news_detail.html', context)
+class TagView(generics.ListAPIView):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
 
 
-def like_news(request, news_id):
-    """Using user session to handle liking functionality"""
-    news = get_object_or_404(News, pk=news_id)
-    session_key = request.session.session_key
-    user_liked = None
+class NewsByTagAPIView(generics.ListAPIView):
+    serializer_class = NewsSerializer
+    pagination_class = NewsPagination
 
-    if not session_key:
-        request.session.save()
+    def get_queryset(self):
+        tag_id = self.kwargs['tag_id']
+        return News.objects.filter(tags__id=tag_id)
+
+
+class NewsDetailAPIView(generics.RetrieveAPIView):
+    queryset = News.objects.all()
+    serializer_class = NewsSerializer
+    lookup_field = 'pk'
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views()  # Increment views
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+class LikeNewsAPIView(APIView):
+    def post(self, request, news_id):
+        news = News.objects.get(pk=news_id)
         session_key = request.session.session_key
 
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        action = data.get('action')  # 'like' or 'dislike'
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
 
+        action = request.data.get('action')  # 'like' or 'dislike'
         like, created = Like.objects.get_or_create(session_key=session_key, news=news)
         like.handle_liking(action)
-        user_liked = like.liked
 
-    likes_count = news.likes.filter(liked=True).count()
-    dislikes_count = news.likes.filter(liked=False).count()
-    response = {
-        'likes_count': likes_count,
-        'dislikes_count': dislikes_count,
-        'user_liked': user_liked,
-    }
-    return JsonResponse(response)
+        likes_count = news.likes.filter(liked=True).count()
+        dislikes_count = news.likes.filter(liked=False).count()
+
+        response = {
+            'likes_count': likes_count,
+            'dislikes_count': dislikes_count,
+            'user_liked': like.liked,
+        }
+        return Response(response, status=status.HTTP_200_OK)
 
 
-def news_statistics(request):
-    """Getting statistics for all news"""
-    news = News.objects.values('pk', 'title', 'views').order_by('-views')
-
-    context = {
-        'news': news,
-    }
-    return render(request, 'news/statistics.html', context)
+class NewsStatisticsAPIView(APIView):
+    def get(self, request):
+        news_stats = News.objects.values('pk', 'title', 'views').order_by('-views')
+        return Response(news_stats)
