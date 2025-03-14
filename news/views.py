@@ -73,14 +73,10 @@ class NewsDetailAPIView(generics.RetrieveAPIView):
 class LikeNewsAPIView(APIView):
     def post(self, request, news_id):
         news = News.objects.get(pk=news_id)
-        session_key = request.session.session_key
+        unique_user_id = request.unique_user_id
 
-        if not session_key:
-            request.session.create()
-            session_key = request.session.session_key
-
-        action = request.data.get('action')  # 'like' or 'dislike'
-        like, created = Like.objects.get_or_create(session_key=session_key, news=news)
+        action = request.data.get('action')
+        like, created = Like.objects.get_or_create(session_key=unique_user_id, news=news)
         like.handle_liking(action)
 
         likes_count = news.likes.filter(liked=True).count()
