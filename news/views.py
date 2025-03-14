@@ -35,6 +35,7 @@ class NewsPagination(pagination.PageNumberPagination):
     page_size = 3  # Number of items per page
     page_size_query_param = 'page_size'
     max_page_size = 100
+    ordering = ('-created_at',)
 
 
 class NewsListAPIView(generics.ListAPIView):
@@ -44,7 +45,7 @@ class NewsListAPIView(generics.ListAPIView):
 
 
 class TagView(generics.ListAPIView):
-    queryset = Tag.objects.all()
+    queryset = Tag.objects.all().order_by('-name')
     serializer_class = TagSerializer
 
 
