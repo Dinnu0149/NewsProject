@@ -121,7 +121,8 @@ CLOUDINARY_STORAGE = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"  # Database-backed sessions
-SESSION_COOKIE_SECURE = False  # True only for HTTPS
+# SESSION_COOKIE_SECURE = False  # True only for HTTPS/
+SESSION_COOKIE_SECURE = True  # True only for HTTPS
 SESSION_COOKIE_HTTPONLY = True  # Prevents JS access to cookie
 SESSION_COOKIE_SAMESITE = "None"  # Allow cross-origin session sharing
 SESSION_COOKIE_NAME = "sessionid"
