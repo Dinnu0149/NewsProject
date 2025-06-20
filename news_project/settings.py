@@ -142,6 +142,7 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:3000',
+    'https://two4hnews-l1jb.onrender.com'
 ]
 
 CSRF_TRUSTED_ORIGINS = [
